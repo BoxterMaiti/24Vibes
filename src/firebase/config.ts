@@ -5,13 +5,13 @@ import { getAnalytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyC8W0dAjtE3n2RSO-uQoIl4zvCl6BKiYzs",
-  authDomain: "vibes-8668c.firebaseapp.com",
-  projectId: "vibes-8668c",
-  storageBucket: "vibes-8668c.appspot.com",
-  messagingSenderId: "384027656691",
-  appId: "1:384027656691:web:532ed686e511995f341286",
-  measurementId: "G-4TXCS790KX"
+  apiKey: "SAMPLE",
+  authDomain: "SAMPLE",
+  projectId: "SAMPLE",
+  storageBucket: "SAMPLE",
+  messagingSenderId: "SAMPLE",
+  appId: "SAMPLE",
+  measurementId: "SAMPLE"
 };
 
 // Initialize Firebase
