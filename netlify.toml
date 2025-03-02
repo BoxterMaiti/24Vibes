@@ -1,0 +1,18 @@
+# This file configures Netlify to handle client-side routing
+# It tells Netlify to serve the index.html for any route that doesn't match a static file
+
+[build]
+  publish = "dist"
+  command = "npm run build"
+  functions = "netlify/functions"
+
+# The following redirect rule tells Netlify that for any path that doesn't match a static file,
+# serve the index.html file instead, allowing React Router to handle the routing client-side
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Explicitly tell Netlify to ignore the Firebase API key during secrets scanning
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "FIREBASE_API_KEY,VITE_FIREBASE_API_KEY"

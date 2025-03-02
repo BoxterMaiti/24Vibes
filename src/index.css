@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styling */
+@layer base {
+  /* Prevent layout shift by always reserving space for scrollbar */
+  html {
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+  }
+
+  /* For Webkit browsers (Chrome, Safari, newer Edge) */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 6px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.5);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* For Firefox */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+  }
+  
+  /* Ensure consistent layout with or without scrollbar */
+  body {
+    position: relative;
+    width: 100%;
+  }
+  
+  /* Create a pseudo-element to reserve scrollbar space */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 10px; /* Match scrollbar width */
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+  }
+}
