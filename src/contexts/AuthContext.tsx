@@ -87,6 +87,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("Google sign in successful:", result.user.email);
       
+      // Check if the email domain is 24slides.com
+      if (result.user.email && !result.user.email.endsWith('@24slides.com')) {
+        // Sign out the user if they don't have a 24slides.com email
+        await signOut(auth);
+        setAuthError("Only @24slides.com email addresses are allowed to sign in.");
+        return;
+      }
+      
       // Link user to colleague if they exist in the system
       if (result.user && result.user.email) {
         await linkUserToColleague(result.user.uid, result.user.email, result.user.photoURL || undefined);
