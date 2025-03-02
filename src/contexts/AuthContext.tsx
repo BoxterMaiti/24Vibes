@@ -51,8 +51,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log("Auth state changed:", user?.email || "No user");
       
-      // If a user is logged in, ensure they're in the colleagues database
+      // If a user is logged in, check if they have a 24slides.com email
       if (user && user.email) {
+        // If the email is not from 24slides.com, sign them out immediately
+        if (!user.email.endsWith('@24slides.com')) {
+          console.log("Non-24slides.com email detected, signing out:", user.email);
+          setAuthError("Only @24slides.com email addresses are allowed to sign in.");
+          await signOut(auth);
+          setCurrentUser(null);
+          setLoading(false);
+          return;
+        }
+        
         try {
           // This will create the colleague if they don't exist
           // Pass the photoURL to store the Google profile image
@@ -89,8 +99,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Check if the email domain is 24slides.com
       if (result.user.email && !result.user.email.endsWith('@24slides.com')) {
+        console.log("Non-24slides.com email detected, signing out:", result.user.email);
         // Sign out the user if they don't have a 24slides.com email
         await signOut(auth);
+        setCurrentUser(null);
         setAuthError("Only @24slides.com email addresses are allowed to sign in.");
         return;
       }
@@ -105,7 +117,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
       
       setCurrentUser(result.user);
-      return result;
+      return;
     } catch (error: any) {
       console.error("Error during Google sign in:", error);
       setAuthError(error.message || "Failed to sign in with Google");
