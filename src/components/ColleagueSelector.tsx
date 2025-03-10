@@ -168,7 +168,7 @@ const ColleagueSelector: React.FC<ColleagueSelectorProps> = ({
           <div className="relative">
             <input
               type="text"
-              placeholder="Search colleagues by name or email"
+              placeholder="Search colleagues"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pl-10"
               value={searchTerm}
               onChange={handleInputChange}

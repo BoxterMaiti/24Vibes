@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MessageSquarePlus, LogOut, UserCircle, ChevronDown, Users, Settings } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 
 const Header: React.FC = () => {
@@ -30,6 +31,37 @@ const Header: React.FC = () => {
       navigate('/login');
     } catch (error) {
       console.error('Failed to log out', error);
+    }
+  };
+
+  // Animation variants for the dropdown
+  const dropdownVariants = {
+    hidden: { 
+      opacity: 0,
+      y: -10,
+      scale: 0.95,
+      transition: {
+        duration: 0.2,
+        ease: "easeInOut"
+      }
+    },
+    visible: { 
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.2,
+        ease: "easeOut"
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: -10,
+      scale: 0.95,
+      transition: {
+        duration: 0.15,
+        ease: "easeInOut"
+      }
     }
   };
 
@@ -63,41 +95,54 @@ const Header: React.FC = () => {
               <span className="text-sm text-gray-600 hidden md:inline">
                 {currentUser.displayName || currentUser.email?.split('@')[0]}
               </span>
-              <ChevronDown size={16} className="text-gray-500" />
+              <motion.div
+                animate={{ rotate: dropdownOpen ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ChevronDown size={16} className="text-gray-500" />
+              </motion.div>
             </button>
             
             {/* Dropdown Menu */}
-            {dropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
-                <Link 
-                  to="/profile" 
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  onClick={() => setDropdownOpen(false)}
+            <AnimatePresence>
+              {dropdownOpen && (
+                <motion.div 
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 origin-top"
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={dropdownVariants}
                 >
-                  <UserCircle size={16} className="mr-2" />
-                  View Profile
-                </Link>
-                
-                {isAdmin && (
                   <Link 
-                    to="/manage-people" 
+                    to="/profile" 
                     className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     onClick={() => setDropdownOpen(false)}
                   >
-                    <Users size={16} className="mr-2" />
-                    Manage People
+                    <UserCircle size={16} className="mr-2" />
+                    View Profile
                   </Link>
-                )}
-                
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                >
-                  <LogOut size={16} className="mr-2" />
-                  Log Out
-                </button>
-              </div>
-            )}
+                  
+                  {isAdmin && (
+                    <Link 
+                      to="/manage-people" 
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setDropdownOpen(false)}
+                    >
+                      <Users size={16} className="mr-2" />
+                      Manage People
+                    </Link>
+                  )}
+                  
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                  >
+                    <LogOut size={16} className="mr-2" />
+                    Log Out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
         <Link 
