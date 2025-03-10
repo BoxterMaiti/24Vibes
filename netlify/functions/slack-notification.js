@@ -130,14 +130,21 @@ function formatVibeMessage(vibe) {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*From:* ${senderName}\n*Message:* ${message}`
+          text: `*From:* ${senderName}`
+        }
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `*${message}*`
         }
       },
       personalMessage ? {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `_"${personalMessage}"_`
+          text: `"${personalMessage}"`
         }
       } : null,
       {
