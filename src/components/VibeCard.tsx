@@ -66,45 +66,68 @@ const VibeCard: React.FC<VibeCardProps> = ({ vibe, type }) => {
         <CategoryIcon className="w-16 h-16 text-gray-800" />
       </div>
       
-      <div className="mb-4">
-        <p className="text-gray-800 text-lg font-medium mb-2">{vibe.message}</p>
-        {vibe.personalMessage && (
-          <p className="text-gray-600 italic">"{vibe.personalMessage}"</p>
-        )}
-      </div>
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-gray-500 gap-2">
-        <div className="flex items-center">
-          {type === 'received' ? (
-            'From: Anonymous'
-          ) : (
-            <div className="flex items-center">
-              <span className="mr-2">To:</span>
-              {vibe.recipientAvatar ? (
-                <img 
-                  src={vibe.recipientAvatar} 
-                  alt={vibe.recipientName || vibe.recipient}
-                  className="w-6 h-6 rounded-full mr-2"
-                  onError={(e) => {
-                    // Replace with placeholder if image fails to load
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/24';
-                  }}
-                />
-              ) : (
-                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                  <Users size={12} className="text-gray-500" />
-                </div>
-              )}
-              <span>{vibe.recipientName || vibe.recipient}</span>
-            </div>
+      {/* Main content with proper spacing from icon */}
+      <div className="relative z-10">
+        <div className="mb-4 pr-20"> {/* Add right padding to prevent text overlap with icon */}
+          <p className="text-gray-800 text-lg font-medium mb-2 break-words">{vibe.message}</p>
+          {vibe.personalMessage && (
+            <p className="text-gray-600 italic break-words">{`"${vibe.personalMessage}"`}</p>
           )}
         </div>
-        <div className="flex items-center">
-          {vibe.category && (
-            <span className={`inline-block px-2 py-1 rounded-full text-xs mr-3 ${categoryColorClass}`}>
-              {vibe.category}
-            </span>
-          )}
-          <span>{formattedDate}</span>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-gray-500 gap-2">
+          <div className="flex items-center gap-4">
+            {/* Only show sender info for received vibes */}
+            {type === 'received' && (
+              <div className="flex items-center">
+                <span className="mr-2">From:</span>
+                {vibe.senderAvatar ? (
+                  <img 
+                    src={vibe.senderAvatar} 
+                    alt={vibe.senderName || vibe.sender}
+                    className="w-6 h-6 rounded-full mr-2"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/24';
+                    }}
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                    <Users size={12} className="text-gray-500" />
+                  </div>
+                )}
+                <span className="truncate max-w-[150px]">{vibe.senderName || vibe.sender.split('@')[0]}</span>
+              </div>
+            )}
+
+            {/* Show recipient info for sent vibes */}
+            {type === 'sent' && (
+              <div className="flex items-center">
+                <span className="mr-2">To:</span>
+                {vibe.recipientAvatar ? (
+                  <img 
+                    src={vibe.recipientAvatar} 
+                    alt={vibe.recipientName || vibe.recipient}
+                    className="w-6 h-6 rounded-full mr-2"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://via.placeholder.com/24';
+                    }}
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                    <Users size={12} className="text-gray-500" />
+                  </div>
+                )}
+                <span className="truncate max-w-[150px]">{vibe.recipientName || vibe.recipient.split('@')[0]}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center">
+            {vibe.category && (
+              <span className={`inline-block px-2 py-1 rounded-full text-xs mr-3 ${categoryColorClass}`}>
+                {vibe.category}
+              </span>
+            )}
+            <span>{formattedDate}</span>
+          </div>
         </div>
       </div>
     </motion.div>

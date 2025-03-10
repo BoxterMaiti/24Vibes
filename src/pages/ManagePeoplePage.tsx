@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Search, Shield, ShieldOff, UserCheck, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Users, Search, Shield, ShieldOff, UserCheck, RefreshCw, MessageSquare } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllUsers, updateUserAdminStatus } from '../services/colleagueService';
 import { Colleague } from '../types';
 import ConfirmationDialog from '../components/ConfirmationDialog';
+import UserVibesModal from '../components/UserVibesModal';
 
 interface UserData {
   userId: string;
@@ -31,6 +32,10 @@ const ManagePeoplePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [processingUser, setProcessingUser] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{
+    email: string;
+    colleague: Colleague | null;
+  } | null>(null);
   const [confirmation, setConfirmation] = useState<ConfirmationState>({
     isOpen: false,
     userId: '',
@@ -321,24 +326,36 @@ const ManagePeoplePage: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button
-                                onClick={() => openConfirmation(user.userId, user.isAdmin)}
-                                disabled={processingUser === user.userId}
-                                className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                                  user.isAdmin
-                                    ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                } transition-colors disabled:opacity-50`}
-                              >
-                                {processingUser === user.userId ? (
-                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-1"></div>
-                                ) : user.isAdmin ? (
-                                  <ShieldOff size={16} className="mr-1" />
-                                ) : (
-                                  <Shield size={16} className="mr-1" />
-                                )}
-                                {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
-                              </button>
+                              <div className="flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={() => setSelectedUser({
+                                    email: user.email,
+                                    colleague: user.colleague
+                                  })}
+                                  className="inline-flex items-center px-3 py-1 rounded-md text-sm font-medium bg-gray-100 text-gray-800 hover:bg-gray-200 transition-colors"
+                                >
+                                  <MessageSquare size={16} className="mr-1" />
+                                  View Vibes
+                                </button>
+                                <button
+                                  onClick={() => openConfirmation(user.userId, user.isAdmin)}
+                                  disabled={processingUser === user.userId}
+                                  className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
+                                    user.isAdmin
+                                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                  } transition-colors disabled:opacity-50`}
+                                >
+                                  {processingUser === user.userId ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-1"></div>
+                                  ) : user.isAdmin ? (
+                                    <ShieldOff size={16} className="mr-1" />
+                                  ) : (
+                                    <Shield size={16} className="mr-1" />
+                                  )}
+                                  {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -365,6 +382,13 @@ const ManagePeoplePage: React.FC = () => {
             : "bg-blue-600 hover:bg-blue-700 text-white"}
           onConfirm={handleToggleAdmin}
           onCancel={closeConfirmation}
+        />
+
+        {/* User Vibes Modal */}
+        <UserVibesModal
+          isOpen={selectedUser !== null}
+          onClose={() => setSelectedUser(null)}
+          user={selectedUser}
         />
       </div>
     </PageTransition>

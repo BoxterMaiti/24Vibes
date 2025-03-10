@@ -8,7 +8,8 @@ import {
   Timestamp,
   getDoc,
   doc,
-  setDoc
+  setDoc,
+  or
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Vibe, CardTemplate } from '../types';
@@ -37,10 +38,14 @@ export async function createVibe(
     
     // Get recipient colleague info if available
     let recipientColleague = null;
+    let senderColleague = null;
     try {
-      recipientColleague = await getColleagueByEmail(recipient);
+      [recipientColleague, senderColleague] = await Promise.all([
+        getColleagueByEmail(recipient),
+        getColleagueByEmail(sender)
+      ]);
     } catch (error) {
-      console.warn(`Error fetching colleague info for ${recipient}, continuing with basic info:`, error);
+      console.warn(`Error fetching colleague info, continuing with basic info:`, error);
     }
     
     // Create a valid timestamp for createdAt
@@ -58,7 +63,7 @@ export async function createVibe(
       personalMessage: String(personalMessage || ''),
       createdAt: now.toISOString(), // Use ISO string instead of serverTimestamp
       templateId: templateId || null,
-      // Add recipient details if available, ensuring all values are valid
+      // Add recipient details if available
       recipientName: recipientColleague ? 
         String(recipientColleague.name || 
          recipientColleague["display name"] || 
@@ -70,7 +75,20 @@ export async function createVibe(
          recipientColleague.Department || '') : '',
       recipientAvatar: recipientColleague ? 
         String(recipientColleague.avatar || 
-         recipientColleague["Avatar URL"] || '') : ''
+         recipientColleague["Avatar URL"] || '') : '',
+      // Add sender details
+      senderName: senderColleague ? 
+        String(senderColleague.name || 
+         senderColleague["display name"] || 
+         senderColleague["Display name"] || 
+         (sender.includes('@') ? sender.split('@')[0] : sender) || '') : 
+        String(sender.includes('@') ? sender.split('@')[0] : sender) || '',
+      senderDepartment: senderColleague ? 
+        String(senderColleague.department || 
+         senderColleague.Department || '') : '',
+      senderAvatar: senderColleague ? 
+        String(senderColleague.avatar || 
+         senderColleague["Avatar URL"] || '') : ''
     };
 
     console.log("Attempting to write vibe to Firestore with data:", JSON.stringify(vibeData, null, 2));
@@ -190,6 +208,9 @@ export async function getReceivedVibes(userEmail: string): Promise<Vibe[]> {
         recipientName: data.recipientName || null,
         recipientAvatar: data.recipientAvatar || null,
         recipientDepartment: data.recipientDepartment || null,
+        senderName: data.senderName || null,
+        senderAvatar: data.senderAvatar || null,
+        senderDepartment: data.senderDepartment || null,
         templateId: data.templateId || null
       });
     });
@@ -243,6 +264,9 @@ export async function getSentVibes(userEmail: string): Promise<Vibe[]> {
         recipientName: data.recipientName || null,
         recipientAvatar: data.recipientAvatar || null,
         recipientDepartment: data.recipientDepartment || null,
+        senderName: data.senderName || null,
+        senderAvatar: data.senderAvatar || null,
+        senderDepartment: data.senderDepartment || null,
         templateId: data.templateId || null
       });
     });
@@ -253,6 +277,66 @@ export async function getSentVibes(userEmail: string): Promise<Vibe[]> {
     return vibes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error('Error getting sent vibes:', error);
+    return [];
+  }
+}
+
+// New function to get all vibes for a specific user (both sent and received)
+export async function getUserVibes(userEmail: string): Promise<Vibe[]> {
+  try {
+    // First check if Firestore is available
+    if (!db) {
+      console.error("Firestore database is not initialized");
+      return [];
+    }
+    
+    if (!userEmail) {
+      console.warn("No user email provided to getUserVibes");
+      return [];
+    }
+    
+    console.log(`Getting all vibes for user: ${userEmail}`);
+    
+    // Query for both sent and received vibes
+    const q = query(
+      collection(db, 'vibes'),
+      or(
+        where('sender', '==', userEmail),
+        where('recipient', '==', userEmail)
+      )
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const vibes: Vibe[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      vibes.push({
+        id: doc.id,
+        message: data.message || '',
+        sender: data.sender || '',
+        recipient: data.recipient || '',
+        createdAt: data.createdAt instanceof Timestamp ? 
+          data.createdAt.toDate() : 
+          (typeof data.createdAt === 'string' ? new Date(data.createdAt) : new Date()),
+        category: data.category || '',
+        personalMessage: data.personalMessage || '',
+        recipientName: data.recipientName || null,
+        recipientAvatar: data.recipientAvatar || null,
+        recipientDepartment: data.recipientDepartment || null,
+        senderName: data.senderName || null,
+        senderAvatar: data.senderAvatar || null,
+        senderDepartment: data.senderDepartment || null,
+        templateId: data.templateId || null
+      });
+    });
+    
+    console.log(`Found ${vibes.length} total vibes for user`);
+    
+    // Sort by date (newest first)
+    return vibes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  } catch (error) {
+    console.error('Error getting user vibes:', error);
     return [];
   }
 }

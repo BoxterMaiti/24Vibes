@@ -11,6 +11,9 @@ export interface Vibe {
   recipientName?: string | null;
   recipientDepartment?: string | null;
   recipientAvatar?: string | null;
+  senderName?: string | null;
+  senderDepartment?: string | null;
+  senderAvatar?: string | null;
   templateId?: string | null;
 }
 

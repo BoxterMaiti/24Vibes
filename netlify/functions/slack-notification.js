@@ -105,6 +105,7 @@ function formatVibeMessage(vibe) {
   const category = vibe.category || 'Custom';
   const message = vibe.message || 'Someone sent you a vibe!';
   const personalMessage = vibe.personalMessage || '';
+  const senderName = vibe.senderName || vibe.sender.split('@')[0];
   
   // Format the date
   const date = vibe.createdAt ? new Date(vibe.createdAt).toLocaleDateString('en-US', {
@@ -115,7 +116,7 @@ function formatVibeMessage(vibe) {
 
   // Create a Slack message with blocks for better formatting
   return {
-    text: `You received a new vibe card! "${message}"`,
+    text: `${senderName} sent you a vibe card! "${message}"`,
     blocks: [
       {
         type: "header",
@@ -129,7 +130,7 @@ function formatVibeMessage(vibe) {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `*${message}*`
+          text: `*From:* ${senderName}\n*Message:* ${message}`
         }
       },
       personalMessage ? {
