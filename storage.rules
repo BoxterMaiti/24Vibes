@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Default rule - deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+    
+    // Allow public read access to favicon only
+    match /favicon.ico {
+      allow read: if true;  // Anyone can read the favicon
+      allow write: if false; // No one can write to it (except via Firebase console)
+    }
+  }
+}

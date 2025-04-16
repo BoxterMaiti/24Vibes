@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Building, Briefcase, Save, Camera } from 'lucide-react';
+import { ArrowLeft, User, Building, Briefcase, Save, Camera, MapPin } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../contexts/AuthContext';
 import { getColleagueByUserId, updateColleagueProfile } from '../services/colleagueService';
-import { Colleague } from '../types';
+import { Colleague, Location, LOCATIONS, DEPARTMENTS, JOB_TITLES } from '../types';
+import ComboboxInput from '../components/ComboboxInput';
 
 const ProfilePage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -18,6 +19,7 @@ const ProfilePage: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [department, setDepartment] = useState('');
   const [position, setPosition] = useState('');
+  const [location, setLocation] = useState<Location | ''>('');
   const [colleague, setColleague] = useState<Colleague | null>(null);
   
   // Load user profile data
@@ -41,6 +43,7 @@ const ProfilePage: React.FC = () => {
           setDisplayName(colleagueData.name || colleagueData["display name"] || colleagueData["Display name"] || '');
           setDepartment(colleagueData.department || colleagueData.Department || '');
           setPosition(colleagueData.position || colleagueData["job title"] || colleagueData["Job title"] || '');
+          setLocation(colleagueData.location || '');
         } else {
           // Use data from Firebase Auth as fallback
           setDisplayName(currentUser.displayName || '');
@@ -77,6 +80,7 @@ const ProfilePage: React.FC = () => {
           "display name": displayName,
           department: department,
           position: position,
+          location: location || undefined,
           // Use Google profile photo URL if available
           avatar: currentUser.photoURL || undefined
         }
@@ -178,37 +182,49 @@ const ProfilePage: React.FC = () => {
                         <label htmlFor="department" className="block text-gray-700 font-medium mb-2">
                           Department
                         </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Building size={18} className="text-gray-400" />
-                          </div>
-                          <input
-                            type="text"
-                            id="department"
-                            value={department}
-                            onChange={(e) => setDepartment(e.target.value)}
-                            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Your department (e.g., Engineering, Marketing)"
-                          />
-                        </div>
+                        <ComboboxInput
+                          id="department"
+                          value={department}
+                          onChange={setDepartment}
+                          options={DEPARTMENTS}
+                          placeholder="Select or enter your department"
+                          icon={<Building size={18} className="text-gray-400" />}
+                        />
                       </div>
                       
-                      <div className="mb-6">
+                      <div className="mb-4">
                         <label htmlFor="position" className="block text-gray-700 font-medium mb-2">
                           Job Title
                         </label>
+                        <ComboboxInput
+                          id="position"
+                          value={position}
+                          onChange={setPosition}
+                          options={JOB_TITLES}
+                          placeholder="Select or enter your job title"
+                          icon={<Briefcase size={18} className="text-gray-400" />}
+                        />
+                      </div>
+
+                      <div className="mb-6">
+                        <label htmlFor="location" className="block text-gray-700 font-medium mb-2">
+                          Location
+                        </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Briefcase size={18} className="text-gray-400" />
+                            <MapPin size={18} className="text-gray-400" />
                           </div>
-                          <input
-                            type="text"
-                            id="position"
-                            value={position}
-                            onChange={(e) => setPosition(e.target.value)}
+                          <select
+                            id="location"
+                            value={location}
+                            onChange={(e) => setLocation(e.target.value as Location)}
                             className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Your job title (e.g., Software Engineer)"
-                          />
+                          >
+                            <option value="">Select your location</option>
+                            {LOCATIONS.map((loc) => (
+                              <option key={loc} value={loc}>{loc}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                       

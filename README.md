@@ -78,9 +78,6 @@ Stores user profile information.
 }
 ```
 
-### UserColleagues Collection
-Maps Firebase user IDs to colleague records.
-
 ```typescript
 {
   userId: string; // Auth user ID

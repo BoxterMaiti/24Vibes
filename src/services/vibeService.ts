@@ -9,11 +9,75 @@ import {
   getDoc,
   doc,
   setDoc,
-  or
+  or,
+  updateDoc,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { Vibe, CardTemplate } from '../types';
+import { Vibe, CardTemplate, Reaction } from '../types';
 import { getColleagueByEmail } from './colleagueService';
+
+// Add reaction to a vibe
+export async function addReaction(vibeId: string, userId: string, emoji: string): Promise<boolean> {
+  try {
+    if (!db || !vibeId || !userId || !emoji) {
+      console.warn('Missing required parameters');
+      return false;
+    }
+
+    const reaction: Reaction = {
+      emoji,
+      userId,
+      createdAt: new Date().toISOString()
+    };
+
+    const vibeRef = doc(db, 'vibes', vibeId);
+    await updateDoc(vibeRef, {
+      reactions: arrayUnion(reaction)
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error adding reaction:', error);
+    return false;
+  }
+}
+
+// Remove reaction from a vibe
+export async function removeReaction(vibeId: string, userId: string, emoji: string): Promise<boolean> {
+  try {
+    if (!db || !vibeId || !userId || !emoji) {
+      console.warn('Missing required parameters');
+      return false;
+    }
+
+    const vibeRef = doc(db, 'vibes', vibeId);
+    const vibeDoc = await getDoc(vibeRef);
+
+    if (!vibeDoc.exists()) {
+      console.warn('Vibe not found');
+      return false;
+    }
+
+    const vibe = vibeDoc.data();
+    const reactions = vibe.reactions || [];
+    const reactionToRemove = reactions.find(
+      (r: Reaction) => r.userId === userId && r.emoji === emoji
+    );
+
+    if (reactionToRemove) {
+      await updateDoc(vibeRef, {
+        reactions: arrayRemove(reactionToRemove)
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error removing reaction:', error);
+    return false;
+  }
+}
 
 // Create a new vibe card
 export async function createVibe(
@@ -25,18 +89,15 @@ export async function createVibe(
   templateId?: string | null
 ) {
   try {
-    // First check if Firestore is available
     if (!db) {
       console.error("Firestore database is not initialized");
       throw new Error("Database connection not available");
     }
     
-    // Validate required fields
     if (!message || !sender || !recipient) {
       throw new Error("Missing required fields for creating a vibe");
     }
     
-    // Get recipient colleague info if available
     let recipientColleague = null;
     let senderColleague = null;
     try {
@@ -48,22 +109,17 @@ export async function createVibe(
       console.warn(`Error fetching colleague info, continuing with basic info:`, error);
     }
     
-    // Create a valid timestamp for createdAt
     const now = new Date();
     
-    // Generate a unique ID for the document
-    const vibeId = crypto.randomUUID();
-    
-    // Prepare the data with only valid Firestore types - strictly sanitize all fields
     const vibeData = {
       message: String(message || ''),
       sender: String(sender || ''),
       recipient: String(recipient || ''),
       category: String(category || 'Custom'),
       personalMessage: String(personalMessage || ''),
-      createdAt: now.toISOString(), // Use ISO string instead of serverTimestamp
+      createdAt: now.toISOString(),
       templateId: templateId || null,
-      // Add recipient details if available
+      reactions: [],
       recipientName: recipientColleague ? 
         String(recipientColleague.name || 
          recipientColleague["display name"] || 
@@ -76,7 +132,6 @@ export async function createVibe(
       recipientAvatar: recipientColleague ? 
         String(recipientColleague.avatar || 
          recipientColleague["Avatar URL"] || '') : '',
-      // Add sender details
       senderName: senderColleague ? 
         String(senderColleague.name || 
          senderColleague["display name"] || 
@@ -91,16 +146,11 @@ export async function createVibe(
          senderColleague["Avatar URL"] || '') : ''
     };
 
-    console.log("Attempting to write vibe to Firestore with data:", JSON.stringify(vibeData, null, 2));
-
-    // Try using addDoc instead of setDoc - this avoids potential permission issues with specific IDs
     try {
       const docRef = await addDoc(collection(db, 'vibes'), vibeData);
       console.log(`Created vibe with ID: ${docRef.id}`);
       
-      // Send notification to Slack if we're in a production environment
       try {
-        // Only send notification if we're not in development mode and not in StackBlitz
         const isStackBlitz = window.location.hostname.includes('stackblitz');
         const isDevelopment = window.location.hostname === 'localhost' || 
                              window.location.hostname === '127.0.0.1';
@@ -127,11 +177,9 @@ export async function createVibe(
           console.log("Skipping Slack notification in development/StackBlitz environment");
         }
       } catch (notificationError) {
-        // Don't fail the vibe creation if notification fails
         console.warn('Error sending Slack notification:', notificationError);
       }
       
-      // Return the created vibe with the document ID
       return { 
         id: docRef.id, 
         ...vibeData, 
@@ -140,14 +188,14 @@ export async function createVibe(
     } catch (firestoreError) {
       console.error("Firestore write error:", firestoreError);
       
-      // Try a different approach with minimal data and addDoc
       try {
         console.log("Attempting with minimal data");
         const minimalData = {
           message: String(message || ''),
           sender: String(sender || ''),
           recipient: String(recipient || ''),
-          createdAt: now.toISOString()
+          createdAt: now.toISOString(),
+          reactions: []
         };
         
         const docRef = await addDoc(collection(db, 'vibes'), minimalData);
@@ -172,14 +220,8 @@ export async function createVibe(
 // Get vibes received by a user
 export async function getReceivedVibes(userEmail: string): Promise<Vibe[]> {
   try {
-    // First check if Firestore is available
-    if (!db) {
-      console.error("Firestore database is not initialized");
-      return [];
-    }
-    
-    if (!userEmail) {
-      console.warn("No user email provided to getReceivedVibes");
+    if (!db || !userEmail) {
+      console.warn("Database not initialized or no email provided");
       return [];
     }
     
@@ -211,13 +253,13 @@ export async function getReceivedVibes(userEmail: string): Promise<Vibe[]> {
         senderName: data.senderName || null,
         senderAvatar: data.senderAvatar || null,
         senderDepartment: data.senderDepartment || null,
-        templateId: data.templateId || null
+        templateId: data.templateId || null,
+        reactions: data.reactions || []
       });
     });
     
     console.log(`Found ${vibes.length} received vibes`);
     
-    // Sort by date (newest first) since we can't use orderBy with the current indexes
     return vibes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error('Error getting received vibes:', error);
@@ -228,14 +270,8 @@ export async function getReceivedVibes(userEmail: string): Promise<Vibe[]> {
 // Get vibes sent by a user
 export async function getSentVibes(userEmail: string): Promise<Vibe[]> {
   try {
-    // First check if Firestore is available
-    if (!db) {
-      console.error("Firestore database is not initialized");
-      return [];
-    }
-    
-    if (!userEmail) {
-      console.warn("No user email provided to getSentVibes");
+    if (!db || !userEmail) {
+      console.warn("Database not initialized or no email provided");
       return [];
     }
     
@@ -267,13 +303,13 @@ export async function getSentVibes(userEmail: string): Promise<Vibe[]> {
         senderName: data.senderName || null,
         senderAvatar: data.senderAvatar || null,
         senderDepartment: data.senderDepartment || null,
-        templateId: data.templateId || null
+        templateId: data.templateId || null,
+        reactions: data.reactions || []
       });
     });
     
     console.log(`Found ${vibes.length} sent vibes`);
     
-    // Sort by date (newest first) since we can't use orderBy with the current indexes
     return vibes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error('Error getting sent vibes:', error);
@@ -281,23 +317,16 @@ export async function getSentVibes(userEmail: string): Promise<Vibe[]> {
   }
 }
 
-// New function to get all vibes for a specific user (both sent and received)
+// Get all vibes for a specific user
 export async function getUserVibes(userEmail: string): Promise<Vibe[]> {
   try {
-    // First check if Firestore is available
-    if (!db) {
-      console.error("Firestore database is not initialized");
-      return [];
-    }
-    
-    if (!userEmail) {
-      console.warn("No user email provided to getUserVibes");
+    if (!db || !userEmail) {
+      console.warn("Database not initialized or no email provided");
       return [];
     }
     
     console.log(`Getting all vibes for user: ${userEmail}`);
     
-    // Query for both sent and received vibes
     const q = query(
       collection(db, 'vibes'),
       or(
@@ -327,13 +356,13 @@ export async function getUserVibes(userEmail: string): Promise<Vibe[]> {
         senderName: data.senderName || null,
         senderAvatar: data.senderAvatar || null,
         senderDepartment: data.senderDepartment || null,
-        templateId: data.templateId || null
+        templateId: data.templateId || null,
+        reactions: data.reactions || []
       });
     });
     
     console.log(`Found ${vibes.length} total vibes for user`);
     
-    // Sort by date (newest first)
     return vibes.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   } catch (error) {
     console.error('Error getting user vibes:', error);
@@ -373,5 +402,45 @@ export async function getTemplateById(templateId: string): Promise<CardTemplate 
   } catch (error) {
     console.error('Error getting template by ID:', error);
     return null;
+  }
+}
+
+export async function getAllVibes(): Promise<Vibe[]> {
+  try {
+    if (!db) {
+      console.warn("Database not initialized");
+      return [];
+    }
+    
+    const snapshot = await getDocs(collection(db, 'vibes'));
+    const vibes: Vibe[] = [];
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      vibes.push({
+        id: doc.id,
+        message: data.message || '',
+        sender: data.sender || '',
+        recipient: data.recipient || '',
+        createdAt: data.createdAt instanceof Timestamp ? 
+          data.createdAt.toDate() : 
+          (typeof data.createdAt === 'string' ? new Date(data.createdAt) : new Date()),
+        category: data.category || '',
+        personalMessage: data.personalMessage || '',
+        recipientName: data.recipientName || null,
+        recipientAvatar: data.recipientAvatar || null,
+        recipientDepartment: data.recipientDepartment || null,
+        senderName: data.senderName || null,
+        senderAvatar: data.senderAvatar || null,
+        senderDepartment: data.senderDepartment || null,
+        templateId: data.templateId || null,
+        reactions: data.reactions || []
+      });
+    });
+    
+    return vibes;
+  } catch (error) {
+    console.error('Error getting all vibes:', error);
+    return [];
   }
 }

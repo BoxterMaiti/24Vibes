@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "vibes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recipient", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vibes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sender", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

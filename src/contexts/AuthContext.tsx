@@ -1,15 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { 
-  User, 
+  User as FirebaseUser, 
   signInWithPopup,
   signOut, 
   onAuthStateChanged
 } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase/config';
-import { linkUserToColleague, createColleague, checkUserIsAdmin } from '../services/colleagueService';
+import { linkUserToColleague, createColleague, checkUserIsAdmin, getColleagueByUserId } from '../services/colleagueService';
+
+// Extend the Firebase User type to include our custom properties
+interface ExtendedUser extends FirebaseUser {
+  onboardingCompleted?: boolean;
+}
 
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: ExtendedUser | null;
   loading: boolean;
   isAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
@@ -32,7 +37,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<ExtendedUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -64,19 +69,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
         
         try {
-          // This will create the colleague if they don't exist
-          // Pass the photoURL to store the Google profile image
+          // Get the colleague data to check onboarding status
+          const colleagueData = await getColleagueByUserId(user.uid);
+          
+          // Create extended user with onboarding status
+          const extendedUser: ExtendedUser = {
+            ...user,
+            onboardingCompleted: colleagueData?.onboardingCompleted || false
+          };
+          
+          // Update colleague profile with latest photo URL
           await linkUserToColleague(user.uid, user.email, user.photoURL || undefined);
           
           // Check if user is admin
           const adminStatus = await checkUserIsAdmin(user.uid);
           setIsAdmin(adminStatus);
+          
+          // Set the extended user
+          setCurrentUser(extendedUser);
         } catch (error) {
           console.error("Error ensuring user is in colleagues database:", error);
+          // Still set the user but without onboarding status
+          setCurrentUser(user as ExtendedUser);
         }
+      } else {
+        setCurrentUser(null);
       }
       
-      setCurrentUser(user);
       setLoading(false);
     });
 
@@ -109,14 +128,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Link user to colleague if they exist in the system
       if (result.user && result.user.email) {
+        // Get colleague data to check onboarding status
+        const colleagueData = await getColleagueByUserId(result.user.uid);
+        
+        // Create extended user with onboarding status
+        const extendedUser: ExtendedUser = {
+          ...result.user,
+          onboardingCompleted: colleagueData?.onboardingCompleted || false
+        };
+        
+        // Update colleague profile with latest photo URL
         await linkUserToColleague(result.user.uid, result.user.email, result.user.photoURL || undefined);
         
         // Check if user is admin
         const adminStatus = await checkUserIsAdmin(result.user.uid);
         setIsAdmin(adminStatus);
+        
+        // Set the extended user
+        setCurrentUser(extendedUser);
       }
       
-      setCurrentUser(result.user);
       return;
     } catch (error: any) {
       console.error("Error during Google sign in:", error);

@@ -4,44 +4,49 @@ import Header from '../components/Header';
 import TabNavigation from '../components/TabNavigation';
 import EmptyState from '../components/EmptyState';
 import VibeCard from '../components/VibeCard';
+import Leaderboard from '../components/Leaderboard';
 import PageTransition from '../components/PageTransition';
 import { Vibe } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { getReceivedVibes, getSentVibes } from '../services/vibeService';
 
 const HomePage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
+  const [activeTab, setActiveTab] = useState<'received' | 'sent' | 'leaderboard'>('received');
   const [receivedVibes, setReceivedVibes] = useState<Vibe[]>([]);
   const [sentVibes, setSentVibes] = useState<Vibe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { currentUser } = useAuth();
   
-  useEffect(() => {
-    async function loadVibes() {
-      if (!currentUser || !currentUser.email) return;
-      
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const [received, sent] = await Promise.all([
-          getReceivedVibes(currentUser.email),
-          getSentVibes(currentUser.email)
-        ]);
-        
-        setReceivedVibes(received);
-        setSentVibes(sent);
-      } catch (error) {
-        console.error('Error loading vibes:', error);
-        setError('Failed to load vibes. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    }
+  const loadVibes = async () => {
+    if (!currentUser || !currentUser.email) return;
     
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const [received, sent] = await Promise.all([
+        getReceivedVibes(currentUser.email),
+        getSentVibes(currentUser.email)
+      ]);
+      
+      setReceivedVibes(received);
+      setSentVibes(sent);
+    } catch (error) {
+      console.error('Error loading vibes:', error);
+      setError('Failed to load vibes. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadVibes();
   }, [currentUser]);
+
+  const handleReactionChange = () => {
+    loadVibes();
+  };
 
   return (
     <PageTransition>
@@ -81,7 +86,12 @@ const HomePage: React.FC = () => {
                     >
                       {receivedVibes.length > 0 ? (
                         receivedVibes.map(vibe => (
-                          <VibeCard key={vibe.id} vibe={vibe} type="received" />
+                          <VibeCard 
+                            key={vibe.id} 
+                            vibe={vibe} 
+                            type="received"
+                            onReactionChange={handleReactionChange}
+                          />
                         ))
                       ) : (
                         <EmptyState type="received" />
@@ -97,11 +107,26 @@ const HomePage: React.FC = () => {
                     >
                       {sentVibes.length > 0 ? (
                         sentVibes.map(vibe => (
-                          <VibeCard key={vibe.id} vibe={vibe} type="sent" />
+                          <VibeCard 
+                            key={vibe.id} 
+                            vibe={vibe} 
+                            type="sent"
+                            onReactionChange={handleReactionChange}
+                          />
                         ))
                       ) : (
                         <EmptyState type="sent" />
                       )}
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'leaderboard' && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <Leaderboard />
                     </motion.div>
                   )}
                 </>

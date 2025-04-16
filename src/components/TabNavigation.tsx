@@ -1,8 +1,9 @@
 import React from 'react';
+import { Trophy } from 'lucide-react';
 
 interface TabNavigationProps {
-  activeTab: 'received' | 'sent';
-  setActiveTab: (tab: 'received' | 'sent') => void;
+  activeTab: 'received' | 'sent' | 'leaderboard';
+  setActiveTab: (tab: 'received' | 'sent' | 'leaderboard') => void;
   receivedCount: number;
   sentCount: number;
 }
@@ -14,26 +15,39 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   sentCount
 }) => {
   return (
-    <div className="flex space-x-2 mb-6">
+    <div className="flex justify-between items-center mb-6">
+      <div className="flex space-x-2">
+        <button
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            activeTab === 'received'
+              ? 'bg-gray-800 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+          onClick={() => setActiveTab('received')}
+        >
+          Received ({receivedCount})
+        </button>
+        <button
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            activeTab === 'sent'
+              ? 'bg-gray-800 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+          onClick={() => setActiveTab('sent')}
+        >
+          Sent ({sentCount})
+        </button>
+      </div>
       <button
-        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-          activeTab === 'received'
+        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
+          activeTab === 'leaderboard'
             ? 'bg-gray-800 text-white'
             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
         }`}
-        onClick={() => setActiveTab('received')}
+        onClick={() => setActiveTab('leaderboard')}
       >
-        Received ({receivedCount})
-      </button>
-      <button
-        className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-          activeTab === 'sent'
-            ? 'bg-gray-800 text-white'
-            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-        }`}
-        onClick={() => setActiveTab('sent')}
-      >
-        Sent ({sentCount})
+        <Trophy size={16} />
+        Leaderboard
       </button>
     </div>
   );
