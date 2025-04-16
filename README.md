@@ -1,51 +1,85 @@
-# 24Vibes - Anonymous Appreciation Platform
+# 24Vibes - Appreciation Platform
 
 ![24Vibes Logo](https://i.postimg.cc/Prm0LcST/24viibes-logo-0-00-00-00.png)
 
-24Vibes is a web application that allows employees to send anonymous appreciation messages to colleagues. It provides a simple, engaging way to foster a positive workplace culture through peer recognition.
+24Vibes is an internal appreciation platform for 24Slides employees to send recognition messages to colleagues. Currently hosted at [24vibes.netlify.app](https://24vibes.netlify.app), this documentation serves as a guide for migrating the project to 24slides.dev infrastructure.
 
-## Features
+## Current Infrastructure
 
-- **Anonymous Appreciation**: Send appreciation cards to colleagues without revealing your identity
-- **Categorized Templates**: Choose from various appreciation categories (Excellence, Leadership, Positivity, etc.)
-- **User Profiles**: Manage your profile information and preferences
-- **Admin Dashboard**: Administrators can manage users and their permissions
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
-- **Smooth Animations**: Page transitions and interactive elements with Framer Motion
-- **Slack Integration**: Sends notifications to Slack when users receive appreciation cards
+- **Frontend Hosting**: Netlify (24vibes.netlify.app)
+- **Database**: Firebase (Firestore)
+- **Authentication**: Firebase Auth (Google Sign-in)
+- **Serverless Functions**: Netlify Functions
+- **Notifications**: Slack integration via webhook
 
-## Tech Stack
+## Migration Requirements
 
-- **Frontend Framework**: React 18.3.1 with TypeScript
+### 1. Domain Migration
+To migrate from 24vibes.netlify.app to 24slides.dev:
+- Configure DNS settings for the new subdomain
+- Update SSL certificates
+- Update environment variables with new domain
+- Update OAuth redirect URIs in Google Cloud Console
+
+### 2. Firebase Migration
+Current Firebase project needs to be migrated to 24Slides organization:
+- Export Firestore data
+- Transfer Firebase project ownership or create new project
+- Update security rules
+- Migrate Google OAuth configuration
+
+### 3. Environment Variables
+Required environment variables for deployment:
+
+```bash
+# Firebase Configuration
+FIREBASE_API_KEY=
+FIREBASE_AUTH_DOMAIN=
+FIREBASE_PROJECT_ID=
+FIREBASE_STORAGE_BUCKET=
+FIREBASE_MESSAGING_SENDER_ID=
+FIREBASE_APP_ID=
+FIREBASE_MEASUREMENT_ID=
+
+# Frontend Environment Variables (with VITE_ prefix)
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+
+# Slack Integration
+SLACK_BOT_TOKEN=
+SITE_URL=
+
+# Optional: Analytics
+GA_TRACKING_ID=
+```
+
+## Technical Stack
+
+### Frontend
+- **Framework**: React 18.3.1 with TypeScript
 - **Styling**: Tailwind CSS 3.4.1
 - **Routing**: React Router 6.22.3
 - **Animations**: Framer Motion 11.0.8
 - **Icons**: Lucide React 0.344.0
 - **Build Tool**: Vite 5.4.2
-- **Database/Auth**: Firebase 10.9.0 (Firestore + Authentication)
-- **Serverless Functions**: Netlify Functions
 
-## Project Structure
-
-```
-/src
-  /components - Reusable UI components
-  /contexts - React context providers (AuthContext)
-  /firebase - Firebase configuration
-  /pages - Main application pages
-  /services - Service layer for data operations
-  /types - TypeScript type definitions
-/public - Static assets and configuration files
-/netlify/functions - Serverless functions for backend operations
-```
+### Backend Services
+- **Database**: Firebase Firestore
+- **Authentication**: Firebase Auth
+- **Functions**: Currently Netlify Functions (Node.js 18)
+- **Storage**: Firebase Storage (minimal usage, only favicon)
 
 ## Database Structure
 
-The application uses Firebase Firestore with the following collections:
+### Firestore Collections
 
-### Vibes Collection
-Stores all appreciation messages sent between users.
-
+#### Vibes Collection
+Stores appreciation messages.
 ```typescript
 {
   id: string;
@@ -58,133 +92,168 @@ Stores all appreciation messages sent between users.
   recipientName?: string;
   recipientDepartment?: string;
   recipientAvatar?: string;
+  senderName?: string;
+  senderDepartment?: string;
+  senderAvatar?: string;
   templateId?: string;
+  reactions?: Array<{
+    emoji: string;
+    userId: string;
+    createdAt: string;
+  }>;
 }
 ```
 
-### Colleagues Collection
-Stores user profile information.
-
+#### Colleagues Collection
+Stores user profiles.
 ```typescript
 {
-  id: string;
+  id: string; // Matches Firebase Auth UID
   name?: string;
   email: string;
   department?: string;
   position?: string;
   avatar?: string;
   "display name"?: string;
+  location?: string;
   joined?: string;
+  onboardingCompleted?: boolean;
+  isAdmin?: "yes" | "no";
+  updatedAt?: string;
 }
 ```
 
-```typescript
+### Firestore Indexes
+Required indexes for queries:
+```json
 {
-  userId: string; // Auth user ID
-  colleagueId: string; // Reference to colleagues collection
-  email: string;
-  isAdmin: "yes" | "no"; // Admin status
-  linkedAt: string; // ISO date string
+  "indexes": [
+    {
+      "collectionGroup": "vibes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recipient", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "vibes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sender", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ]
 }
 ```
 
-## Getting Started
+### Security Rules
+Critical security rules that must be maintained:
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Only allow @24slides.com users
+    function has24SlidesEmail() {
+      return request.auth != null && 
+        request.auth.token.email.matches(".*@24slides.com$");
+    }
 
-### Prerequisites
+    // Allow server functions to read data
+    function isServerFunction() {
+      return true; // Customize based on your server authentication
+    }
 
-- Node.js 16+ and npm
-- Firebase account (for database and authentication)
-- Slack workspace with a bot token (for Slack integration)
+    match /vibes/{vibeId} {
+      allow read: if has24SlidesEmail() || isServerFunction();
+      allow write: if has24SlidesEmail();
+    }
 
-### Installation
+    match /colleagues/{colleagueId} {
+      allow read: if has24SlidesEmail() || isServerFunction();
+      allow write: if has24SlidesEmail();
+    }
+  }
+}
+```
 
-1. Clone the repository
-   ```bash
-   git clone [repository-url]
-   cd 24vibes
-   ```
+## Serverless Functions
+
+Currently implemented as Netlify Functions, these need to be migrated to your preferred serverless platform:
+
+### Slack Notification Function
+- Triggered when a vibe is sent
+- Sends direct message to recipient
+- Requires Slack bot token
+- Current implementation: `/netlify/functions/slack-notification.js`
+
+## Build and Deployment
+
+Current build process:
+```bash
+# Install dependencies
+npm install
+
+# Build frontend
+npm run build
+
+# Build functions
+npm run build:functions # If using Netlify CLI
+```
+
+Build output:
+- Frontend: `/dist`
+- Functions: `/netlify/functions`
+
+## Development Setup
+
+1. Clone repository
+```bash
+git clone [repository-url]
+cd 24vibes
+```
 
 2. Install dependencies
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-3. Set up environment variables
-   - Copy `.env.example` to `.env.local`
-   - Update the values with your Firebase and Slack credentials
+3. Configure environment variables
+```bash
+cp .env.example .env.local
+# Edit .env.local with your values
+```
 
-4. Configure Firebase
-   - Create a Firebase project at [firebase.google.com](https://firebase.google.com)
-   - Enable Firestore and Authentication (with Google provider)
-   - Update the Firebase configuration in your `.env.local` file
+4. Start development server
+```bash
+npm run dev
+```
 
-5. Configure Slack (optional)
-   - Create a Slack app in your workspace
-   - Add the `chat:write` and `users:read` scopes
-   - Install the app to your workspace
-   - Add the bot token to your `.env.local` file
+## Post-Migration Checklist
 
-6. Start the development server
-   ```bash
-   npm run dev
-   ```
+1. **Domain Configuration**
+   - [ ] Configure DNS for 24slides.dev subdomain
+   - [ ] Set up SSL certificate
+   - [ ] Update OAuth redirect URIs
 
-## Deployment
+2. **Firebase Setup**
+   - [ ] Create new Firebase project under 24Slides organization
+   - [ ] Import Firestore data
+   - [ ] Configure security rules
+   - [ ] Set up Google authentication
 
-The project is configured for deployment on Netlify:
+3. **Environment**
+   - [ ] Configure all environment variables
+   - [ ] Update API keys and credentials
+   - [ ] Configure Slack integration
 
-1. Push your code to a Git repository
-
-2. Connect your repository to Netlify
-
-3. Configure the build settings:
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-   - Functions directory: `netlify/functions`
-
-4. Add environment variables in the Netlify dashboard:
-   - All variables from your `.env.local` file (without the `VITE_` prefix for server-side variables)
-
-## Using in StackBlitz
-
-When using this project in StackBlitz, the Firebase configuration is included with fallback values. For a production deployment, you should:
-
-1. Create your own Firebase project
-2. Update the environment variables in your deployment platform
-3. Never expose API keys in client-side code for production applications
-
-## Customization
-
-### Branding
-
-- Update the logo in the `Header` component
-- Modify the color scheme in `tailwind.config.js`
-- Customize the card templates in `public/Card_templates.json`
-
-### Authentication
-
-The application currently uses Firebase Authentication with Google sign-in. To use a different authentication provider:
-
-1. Update the auth context in `src/contexts/AuthContext.tsx`
-2. Implement the required authentication methods
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+4. **Testing**
+   - [ ] Verify authentication flow
+   - [ ] Test data migration
+   - [ ] Validate Slack notifications
+   - [ ] Check user permissions
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- [React](https://reactjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Firebase](https://firebase.google.com/)
-- [Framer Motion](https://www.framer.com/motion/)
-- [Lucide Icons](https://lucide.dev/)
-- [Netlify Functions](https://www.netlify.com/products/functions/)
+Internal 24Slides project - All rights reserved
