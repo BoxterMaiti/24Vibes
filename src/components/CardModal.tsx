@@ -90,6 +90,14 @@ const CardModal: React.FC<CardModalProps> = ({ isOpen, onClose, template, catego
       return;
     }
 
+    // Check if user is trying to send a vibe to themselves
+    if (selectedColleague.email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+        selectedColleague.Email?.toLowerCase() === currentUser.email?.toLowerCase() ||
+        selectedColleague['email address']?.toLowerCase() === currentUser.email?.toLowerCase()) {
+      setError("Self love is important, but there's no need to send vibes to yourself. Try sending a vibe to a colleague instead!");
+      return;
+    }
+
     try {
       setSending(true);
       setError('');

@@ -74,8 +74,12 @@ const VibeCard: React.FC<VibeCardProps> = ({ vibe, type, onReactionChange }) => 
       <div className="relative z-10">
         <div className="mb-4 pr-20">
           <p className="text-gray-800 text-lg font-medium mb-2 break-words">{vibe.message}</p>
-          {vibe.personalMessage && (
+          {vibe.personalMessage ? (
             <p className="text-gray-600 italic break-words">{`"${vibe.personalMessage}"`}</p>
+          ) : (
+            <span className="inline-block px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-md ">
+              No message
+            </span>
           )}
         </div>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center text-sm text-gray-500 gap-2">

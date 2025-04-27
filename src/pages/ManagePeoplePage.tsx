@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Search, Shield, ShieldOff, UserCheck, RefreshCw, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Users, Search, Shield, ShieldOff, UserCheck, RefreshCw, MessageSquare, MoreVertical } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../contexts/AuthContext';
 import { getAllUsers, updateUserAdminStatus } from '../services/colleagueService';
@@ -42,21 +42,19 @@ const ManagePeoplePage: React.FC = () => {
     currentStatus: false,
     userName: ''
   });
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  // Redirect if not admin
   useEffect(() => {
     if (!isAdmin) {
       navigate('/');
     }
   }, [isAdmin, navigate]);
 
-  // Load all users
   useEffect(() => {
     async function loadUsers() {
       try {
         setLoading(true);
         setError(null);
-        
         const allUsers = await getAllUsers();
         setUsers(allUsers);
       } catch (err) {
@@ -70,7 +68,17 @@ const ManagePeoplePage: React.FC = () => {
     loadUsers();
   }, []);
 
-  // Filter users based on search term
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (openMenuId && !(event.target as Element).closest('.action-menu')) {
+        setOpenMenuId(null);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openMenuId]);
+
   const filteredUsers = users.filter(user => {
     if (!user.email) return false;
     
@@ -87,22 +95,20 @@ const ManagePeoplePage: React.FC = () => {
            department.includes(searchLower);
   });
 
-  // Open confirmation dialog
   const openConfirmation = (userId: string, currentStatus: boolean) => {
     const user = users.find(u => u.userId === userId);
     if (!user) return;
     
     const userName = getDisplayName(user);
-    
     setConfirmation({
       isOpen: true,
       userId,
       currentStatus,
       userName
     });
+    setOpenMenuId(null);
   };
 
-  // Close confirmation dialog
   const closeConfirmation = () => {
     setConfirmation(prev => ({
       ...prev,
@@ -110,14 +116,10 @@ const ManagePeoplePage: React.FC = () => {
     }));
   };
 
-  // Handle toggling admin status after confirmation
   const handleToggleAdmin = async () => {
     try {
       const { userId, currentStatus, userName } = confirmation;
-      
-      // Close the confirmation dialog
       closeConfirmation();
-      
       setProcessingUser(userId);
       setSuccessMessage(null);
       setError(null);
@@ -126,7 +128,6 @@ const ManagePeoplePage: React.FC = () => {
       const success = await updateUserAdminStatus(userId, newStatus);
       
       if (success) {
-        // Update local state
         setUsers(prevUsers => 
           prevUsers.map(user => 
             user.userId === userId 
@@ -136,8 +137,6 @@ const ManagePeoplePage: React.FC = () => {
         );
         
         setSuccessMessage(`${userName}'s admin status updated successfully to ${newStatus ? 'admin' : 'regular user'}.`);
-        
-        // Clear success message after 3 seconds
         setTimeout(() => {
           setSuccessMessage(null);
         }, 3000);
@@ -152,7 +151,6 @@ const ManagePeoplePage: React.FC = () => {
     }
   };
 
-  // Refresh user list
   const handleRefresh = async () => {
     try {
       setLoading(true);
@@ -163,8 +161,6 @@ const ManagePeoplePage: React.FC = () => {
       setUsers(allUsers);
       
       setSuccessMessage('User list refreshed successfully.');
-      
-      // Clear success message after 3 seconds
       setTimeout(() => {
         setSuccessMessage(null);
       }, 3000);
@@ -176,7 +172,6 @@ const ManagePeoplePage: React.FC = () => {
     }
   };
 
-  // Get display name for a user
   const getDisplayName = (user: UserData): string => {
     if (user.colleague) {
       return user.colleague.name || 
@@ -190,28 +185,28 @@ const ManagePeoplePage: React.FC = () => {
   return (
     <PageTransition>
       <div className="min-h-screen bg-gray-50 pt-4">
-        <div className="max-w-6xl mx-auto px-6 md:px-8 py-6">
+        <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
             <ArrowLeft size={20} className="mr-2" />
             Back to home
           </Link>
           
-          <div className="bg-white rounded-lg border border-gray-200 p-6 md:p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-              <div className="flex items-center mb-4 md:mb-0">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+              <div className="flex items-center">
                 <Users size={24} className="text-blue-600 mr-2" />
                 <h2 className="text-2xl font-bold text-gray-800">Manage People</h2>
               </div>
               
-              <div className="flex items-center gap-2">
-                <div className="relative">
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <div className="relative flex-1 md:flex-initial">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Search size={16} className="text-gray-400" />
                   </div>
                   <input
                     type="text"
                     placeholder="Search users..."
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full md:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -220,10 +215,10 @@ const ManagePeoplePage: React.FC = () => {
                 <button
                   onClick={handleRefresh}
                   disabled={loading}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
                 >
                   <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-                  <span className="hidden md:inline">Refresh</span>
+                  <span className="hidden sm:inline">Refresh</span>
                 </button>
               </div>
             </div>
@@ -252,22 +247,22 @@ const ManagePeoplePage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                             User
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                             Email
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
                             Department
                           </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                             Status
                           </th>
-                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                             Actions
                           </th>
                         </tr>
@@ -337,24 +332,35 @@ const ManagePeoplePage: React.FC = () => {
                                   <MessageSquare size={16} className="mr-1" />
                                   View Vibes
                                 </button>
-                                <button
-                                  onClick={() => openConfirmation(user.userId, user.isAdmin)}
-                                  disabled={processingUser === user.userId}
-                                  className={`inline-flex items-center px-3 py-1 rounded-md text-sm font-medium ${
-                                    user.isAdmin
-                                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                                      : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                  } transition-colors disabled:opacity-50`}
-                                >
-                                  {processingUser === user.userId ? (
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-1"></div>
-                                  ) : user.isAdmin ? (
-                                    <ShieldOff size={16} className="mr-1" />
-                                  ) : (
-                                    <Shield size={16} className="mr-1" />
+                                <div className="relative action-menu">
+                                  <button
+                                    onClick={() => setOpenMenuId(openMenuId === user.userId ? null : user.userId)}
+                                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                                  >
+                                    <MoreVertical size={16} className="text-gray-500" />
+                                  </button>
+                                  {openMenuId === user.userId && (
+                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                                      <button
+                                        onClick={() => openConfirmation(user.userId, user.isAdmin)}
+                                        disabled={processingUser === user.userId}
+                                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                                      >
+                                        {user.isAdmin ? (
+                                          <>
+                                            <ShieldOff size={16} className="mr-2" />
+                                            Remove Admin
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Shield size={16} className="mr-2" />
+                                            Make Admin
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
                                   )}
-                                  {user.isAdmin ? 'Remove Admin' : 'Make Admin'}
-                                </button>
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -368,7 +374,6 @@ const ManagePeoplePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Confirmation Dialog */}
         <ConfirmationDialog
           isOpen={confirmation.isOpen}
           title={confirmation.currentStatus ? "Remove Admin Rights" : "Grant Admin Rights"}
@@ -384,7 +389,6 @@ const ManagePeoplePage: React.FC = () => {
           onCancel={closeConfirmation}
         />
 
-        {/* User Vibes Modal */}
         <UserVibesModal
           isOpen={selectedUser !== null}
           onClose={() => setSelectedUser(null)}

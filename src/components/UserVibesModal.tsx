@@ -13,9 +13,15 @@ interface UserVibesModalProps {
     email: string;
     colleague: Colleague | null;
   } | null;
+  showLeaderboard?: boolean;
 }
 
-const UserVibesModal: React.FC<UserVibesModalProps> = ({ isOpen, onClose, user }) => {
+const UserVibesModal: React.FC<UserVibesModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  user,
+  showLeaderboard = false
+}) => {
   const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
   const [vibes, setVibes] = useState<Vibe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,12 +50,10 @@ const UserVibesModal: React.FC<UserVibesModalProps> = ({ isOpen, onClose, user }
     }
   }, [isOpen, user]);
 
-  // Filter vibes based on active tab
   const filteredVibes = vibes.filter(vibe => 
     activeTab === 'received' ? vibe.recipient === user?.email : vibe.sender === user?.email
   );
 
-  // Animation variants
   const backdropVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1 },
@@ -133,6 +137,7 @@ const UserVibesModal: React.FC<UserVibesModalProps> = ({ isOpen, onClose, user }
                 setActiveTab={setActiveTab}
                 receivedCount={vibes.filter(v => v.recipient === user.email).length}
                 sentCount={vibes.filter(v => v.sender === user.email).length}
+                showLeaderboard={showLeaderboard}
               />
               
               {error && (
