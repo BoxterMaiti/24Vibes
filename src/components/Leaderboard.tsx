@@ -9,7 +9,7 @@ import Card3D from './Card3D';
 import LevelProgressModal from './LevelProgressModal';
 
 const Leaderboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'makers' | 'catchers'>('makers');
+  const [activeTab, setActiveTab] = useState<'makers' | 'catchers'>('catchers');
   const [timeFilter, setTimeFilter] = useState<TimeFilterState>({ type: 'all' });
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [loading, setLoading] = useState(true);
@@ -197,16 +197,6 @@ const Leaderboard: React.FC = () => {
         <div className="flex space-x-4">
           <button
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeTab === 'makers'
-                ? 'bg-gray-800 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-            onClick={() => setActiveTab('makers')}
-          >
-            Vibe Makers
-          </button>
-          <button
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
               activeTab === 'catchers'
                 ? 'bg-gray-800 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -214,6 +204,16 @@ const Leaderboard: React.FC = () => {
             onClick={() => setActiveTab('catchers')}
           >
             Vibe Catchers
+          </button>
+          <button
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+              activeTab === 'makers'
+                ? 'bg-gray-800 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+            onClick={() => setActiveTab('makers')}
+          >
+            Vibe Makers
           </button>
         </div>
         
