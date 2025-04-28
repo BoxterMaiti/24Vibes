@@ -138,7 +138,7 @@ const OnboardingPage: React.FC = () => {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="How should we call you?"
+                  placeholder="What should we call you?"
                 />
               </div>
             </div>
