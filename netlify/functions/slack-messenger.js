@@ -84,7 +84,7 @@ function formatMessageBlocks(textBlocks, button) {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "View more details on the 24Vibes platform:"
+        text: button.description || "View more details on the 24Vibes platform:"
       },
       accessory: {
         type: "button",

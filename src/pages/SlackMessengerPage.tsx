@@ -19,6 +19,7 @@ const SlackMessengerPage: React.FC = () => {
   const [includeButton, setIncludeButton] = useState(false);
   const [buttonText, setButtonText] = useState('Open 24Vibes');
   const [buttonUrl, setButtonUrl] = useState('https://24vibes.netlify.app');
+  const [buttonDescription, setButtonDescription] = useState('View more details on the 24Vibes platform:');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -64,7 +65,8 @@ const SlackMessengerPage: React.FC = () => {
         blocks: textBlocks,
         button: includeButton ? {
           text: buttonText,
-          url: buttonUrl
+          url: buttonUrl,
+          description: buttonDescription
         } : undefined,
         ...(messageType === 'channel' ? { channel } : { emails: emails.split(',').map(e => e.trim()) })
       };
@@ -291,6 +293,19 @@ const SlackMessengerPage: React.FC = () => {
 
                 {includeButton && (
                   <div className="space-y-4 pl-6">
+                    <div>
+                      <label htmlFor="buttonDescription" className="block text-sm font-medium text-gray-700 mb-2">
+                        Button Description
+                      </label>
+                      <input
+                        type="text"
+                        id="buttonDescription"
+                        value={buttonDescription}
+                        onChange={(e) => setButtonDescription(e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Text that appears before the button..."
+                      />
+                    </div>
                     <div>
                       <label htmlFor="buttonText" className="block text-sm font-medium text-gray-700 mb-2">
                         Button Text
