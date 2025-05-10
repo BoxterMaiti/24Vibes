@@ -78,22 +78,24 @@ function formatMessageBlocks(textBlocks, button) {
     }
   });
 
-  // Add button if configured
+  // Add button if configured - using section with accessory instead of actions
   if (button && button.text && button.url) {
     blocks.push({
-      type: "actions",
-      elements: [
-        {
-          type: "button",
-          text: {
-            type: "plain_text",
-            text: button.text,
-            emoji: true
-          },
-          url: button.url,
-          style: "primary"
-        }
-      ]
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: " " // Empty text required for layout
+      },
+      accessory: {
+        type: "button",
+        text: {
+          type: "plain_text",
+          text: button.text,
+          emoji: true
+        },
+        url: button.url,
+        style: "primary"
+      }
     });
   }
 
