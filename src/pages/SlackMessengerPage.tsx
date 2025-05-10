@@ -1,8 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Users, Hash } from 'lucide-react';
+import { ArrowLeft, Send, Users, Hash, Type, Link as LinkIcon, Bold, AlignCenter } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../contexts/AuthContext';
+
+interface TextBlock {
+  text: string;
+  size: 'normal' | 'large' | 'header';
+}
 
 const SlackMessengerPage: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -10,17 +15,41 @@ const SlackMessengerPage: React.FC = () => {
   const [messageType, setMessageType] = useState<'channel' | 'dm'>('channel');
   const [channel, setChannel] = useState('');
   const [emails, setEmails] = useState('');
-  const [message, setMessage] = useState('');
+  const [textBlocks, setTextBlocks] = useState<TextBlock[]>([{ text: '', size: 'normal' }]);
+  const [includeButton, setIncludeButton] = useState(false);
+  const [buttonText, setButtonText] = useState('Open 24Vibes');
+  const [buttonUrl, setButtonUrl] = useState('https://24vibes.netlify.app');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Redirect if not admin
   React.useEffect(() => {
     if (!isAdmin) {
       navigate('/');
     }
   }, [isAdmin, navigate]);
+
+  const handleAddBlock = () => {
+    setTextBlocks([...textBlocks, { text: '', size: 'normal' }]);
+  };
+
+  const handleRemoveBlock = (index: number) => {
+    if (textBlocks.length > 1) {
+      setTextBlocks(textBlocks.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleBlockTextChange = (index: number, text: string) => {
+    const newBlocks = [...textBlocks];
+    newBlocks[index].text = text;
+    setTextBlocks(newBlocks);
+  };
+
+  const handleBlockSizeChange = (index: number, size: 'normal' | 'large' | 'header') => {
+    const newBlocks = [...textBlocks];
+    newBlocks[index].size = size;
+    setTextBlocks(newBlocks);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +61,11 @@ const SlackMessengerPage: React.FC = () => {
 
       const payload = {
         type: messageType,
-        message,
+        blocks: textBlocks,
+        button: includeButton ? {
+          text: buttonText,
+          url: buttonUrl
+        } : undefined,
         ...(messageType === 'channel' ? { channel } : { emails: emails.split(',').map(e => e.trim()) })
       };
 
@@ -50,7 +83,7 @@ const SlackMessengerPage: React.FC = () => {
       }
 
       setSuccess('Message sent successfully!');
-      setMessage('');
+      setTextBlocks([{ text: '', size: 'normal' }]);
       if (messageType === 'channel') {
         setChannel('');
       } else {
@@ -165,19 +198,132 @@ const SlackMessengerPage: React.FC = () => {
                 </div>
               )}
 
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                  Message
-                </label>
-                <textarea
-                  id="message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your message..."
-                  required
-                />
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Message Blocks
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAddBlock}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    + Add Block
+                  </button>
+                </div>
+
+                {textBlocks.map((block, index) => (
+                  <div key={index} className="space-y-2 p-4 bg-gray-50 rounded-lg">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleBlockSizeChange(index, 'normal')}
+                          className={`p-2 rounded ${
+                            block.size === 'normal'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                          title="Normal Text"
+                        >
+                          <Type size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBlockSizeChange(index, 'large')}
+                          className={`p-2 rounded ${
+                            block.size === 'large'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                          title="Large Text"
+                        >
+                          <Bold size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBlockSizeChange(index, 'header')}
+                          className={`p-2 rounded ${
+                            block.size === 'header'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}
+                          title="Header Text"
+                        >
+                          <AlignCenter size={14} />
+                        </button>
+                      </div>
+                      {textBlocks.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBlock(index)}
+                          className="text-red-600 hover:text-red-700 text-sm"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                    <textarea
+                      value={block.text}
+                      onChange={(e) => handleBlockTextChange(index, e.target.value)}
+                      rows={3}
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder={`Enter ${block.size} text...`}
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="includeButton"
+                    checked={includeButton}
+                    onChange={(e) => setIncludeButton(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="includeButton" className="ml-2 block text-sm text-gray-700">
+                    Include Button
+                  </label>
+                </div>
+
+                {includeButton && (
+                  <div className="space-y-4 pl-6">
+                    <div>
+                      <label htmlFor="buttonText" className="block text-sm font-medium text-gray-700 mb-2">
+                        Button Text
+                      </label>
+                      <input
+                        type="text"
+                        id="buttonText"
+                        value={buttonText}
+                        onChange={(e) => setButtonText(e.target.value)}
+                        className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="Button text..."
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="buttonUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                        Button URL
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <LinkIcon size={18} className="text-gray-400" />
+                        </div>
+                        <input
+                          type="url"
+                          id="buttonUrl"
+                          value={buttonUrl}
+                          onChange={(e) => setButtonUrl(e.target.value)}
+                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="https://..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end">

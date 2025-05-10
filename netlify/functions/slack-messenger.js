@@ -41,6 +41,66 @@ async function findSlackUserByEmail(email) {
 }
 
 /**
+ * Format message blocks based on text blocks and button options
+ * @param {Array} textBlocks - Array of text blocks with size
+ * @param {object} button - Button configuration
+ * @returns {Array} - Formatted message blocks
+ */
+function formatMessageBlocks(textBlocks, button) {
+  const blocks = [];
+
+  // Add each text block with appropriate formatting
+  textBlocks.forEach((block, index) => {
+    if (block.size === 'header') {
+      blocks.push({
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: block.text,
+          emoji: true
+        }
+      });
+    } else {
+      blocks.push({
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: block.size === 'large' ? `*${block.text}*` : block.text
+        }
+      });
+    }
+
+    // Add divider between blocks (except last)
+    if (index < textBlocks.length - 1) {
+      blocks.push({
+        type: "divider"
+      });
+    }
+  });
+
+  // Add button if configured
+  if (button && button.text && button.url) {
+    blocks.push({
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: button.text,
+            emoji: true
+          },
+          url: button.url,
+          style: "primary"
+        }
+      ]
+    });
+  }
+
+  return blocks;
+}
+
+/**
  * Send a message to Slack
  * @param {object} options - Message options
  * @returns {Promise<boolean>} - Success status
@@ -97,7 +157,7 @@ exports.handler = async function(event, context) {
     const payload = JSON.parse(event.body);
     
     // Validate the payload
-    if (!payload.message || !payload.type || 
+    if (!payload.blocks || !Array.isArray(payload.blocks) || !payload.type || 
         (payload.type === 'channel' && !payload.channel) || 
         (payload.type === 'dm' && (!payload.emails || !Array.isArray(payload.emails)))) {
       return {
@@ -106,13 +166,20 @@ exports.handler = async function(event, context) {
       };
     }
 
+    // Format message blocks
+    const blocks = formatMessageBlocks(payload.blocks, payload.button);
+
+    // Get fallback text for clients that don't support blocks
+    const fallbackText = payload.blocks.map(block => block.text).join('\n\n');
+
     let success = false;
 
     if (payload.type === 'channel') {
       // Send message to channel
       success = await sendSlackMessage({
         channel: `#${payload.channel.replace(/^#/, '')}`,
-        text: payload.message
+        text: fallbackText,
+        blocks
       });
     } else {
       // Send DMs to multiple users
@@ -122,7 +189,8 @@ exports.handler = async function(event, context) {
           if (userId) {
             return sendSlackMessage({
               channel: userId,
-              text: payload.message
+              text: fallbackText,
+              blocks
             });
           }
           return false;
