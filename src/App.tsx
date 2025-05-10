@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
 import OnboardingPage from './pages/OnboardingPage';
 import ManagePeoplePage from './pages/ManagePeoplePage';
+import SlackMessengerPage from './pages/SlackMessengerPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { EmojiMenuProvider } from './contexts/EmojiMenuContext';
 
@@ -103,6 +104,13 @@ function AppRoutes() {
           <AdminRoute>
             <OnboardingCheck>
               <ManagePeoplePage />
+            </OnboardingCheck>
+          </AdminRoute>
+        } />
+        <Route path="/slack-messenger" element={
+          <AdminRoute>
+            <OnboardingCheck>
+              <SlackMessengerPage />
             </OnboardingCheck>
           </AdminRoute>
         } />

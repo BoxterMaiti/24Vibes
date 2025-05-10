@@ -1,0 +1,210 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Send, Users, Hash } from 'lucide-react';
+import PageTransition from '../components/PageTransition';
+import { useAuth } from '../contexts/AuthContext';
+
+const SlackMessengerPage: React.FC = () => {
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+  const [messageType, setMessageType] = useState<'channel' | 'dm'>('channel');
+  const [channel, setChannel] = useState('');
+  const [emails, setEmails] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  // Redirect if not admin
+  React.useEffect(() => {
+    if (!isAdmin) {
+      navigate('/');
+    }
+  }, [isAdmin, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      setError(null);
+      setSuccess(null);
+
+      const payload = {
+        type: messageType,
+        message,
+        ...(messageType === 'channel' ? { channel } : { emails: emails.split(',').map(e => e.trim()) })
+      };
+
+      const response = await fetch('/.netlify/functions/slack-messenger', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send message');
+      }
+
+      setSuccess('Message sent successfully!');
+      setMessage('');
+      if (messageType === 'channel') {
+        setChannel('');
+      } else {
+        setEmails('');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to send message');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <PageTransition>
+      <div className="min-h-screen bg-gray-50 pt-4">
+        <div className="max-w-4xl mx-auto px-6 md:px-8 py-6">
+          <Link to="/" className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6">
+            <ArrowLeft size={20} className="mr-2" />
+            Back to home
+          </Link>
+          
+          <div className="bg-white rounded-lg border border-gray-200 p-6 md:p-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6">Slack Messenger</h2>
+            
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+            
+            {success && (
+              <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-md">
+                {success}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Message Type
+                </label>
+                <div className="flex space-x-4">
+                  <button
+                    type="button"
+                    onClick={() => setMessageType('channel')}
+                    className={`flex items-center px-4 py-2 rounded-lg ${
+                      messageType === 'channel'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Hash size={18} className="mr-2" />
+                    Channel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMessageType('dm')}
+                    className={`flex items-center px-4 py-2 rounded-lg ${
+                      messageType === 'dm'
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Users size={18} className="mr-2" />
+                    Direct Messages
+                  </button>
+                </div>
+              </div>
+
+              {messageType === 'channel' ? (
+                <div>
+                  <label htmlFor="channel" className="block text-sm font-medium text-gray-700 mb-2">
+                    Channel Name
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Hash size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      id="channel"
+                      value={channel}
+                      onChange={(e) => setChannel(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="general"
+                      required
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label htmlFor="emails" className="block text-sm font-medium text-gray-700 mb-2">
+                    Email Addresses
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Users size={18} className="text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      id="emails"
+                      value={emails}
+                      onChange={(e) => setEmails(e.target.value)}
+                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="email1@24slides.com, email2@24slides.com"
+                      required
+                    />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">
+                    Separate multiple email addresses with commas
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows={4}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter your message..."
+                  required
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} className="mr-2" />
+                      Send Message
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </PageTransition>
+  );
+};
+
+export default SlackMessengerPage;
