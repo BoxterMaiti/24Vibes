@@ -78,13 +78,13 @@ function formatMessageBlocks(textBlocks, button) {
     }
   });
 
-  // Add button if configured - using section with accessory instead of actions
+  // Add button section at the end if configured
   if (button && button.text && button.url) {
     blocks.push({
       type: "section",
       text: {
         type: "mrkdwn",
-        text: " " // Empty text required for layout
+        text: "View more details on the 24Vibes platform:"
       },
       accessory: {
         type: "button",
@@ -93,8 +93,7 @@ function formatMessageBlocks(textBlocks, button) {
           text: button.text,
           emoji: true
         },
-        url: button.url,
-        style: "primary"
+        url: button.url
       }
     });
   }
