@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, Users, Hash, Type, Link as LinkIcon, Bold, AlignCenter, Image, Upload, X } from 'lucide-react';
+import { ArrowLeft, Send, Users, Hash, Type, Link as LinkIcon, Bold, AlignCenter, Image, X } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,9 +27,6 @@ const SlackMessengerPage: React.FC = () => {
   const [buttonDescription, setButtonDescription] = useState('View more details on the 24Vibes platform:');
   const [includeImage, setIncludeImage] = useState(false);
   const [imageBlock, setImageBlock] = useState<ImageBlock>({ imageUrl: '', altText: '' });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,95 +59,25 @@ const SlackMessengerPage: React.FC = () => {
     setTextBlocks(newBlocks);
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setError('Please select a valid image file');
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Image file size must be less than 5MB');
-        return;
-      }
-
-      setImageFile(file);
-      setError(null);
-
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  const handleImageUrlChange = (url: string) => {
+    setImageBlock(prev => ({ ...prev, imageUrl: url }));
   };
 
-  const handleImageUpload = async () => {
-    if (!imageFile) {
-      setError('No image selected');
-      return;
-    }
-
-    try {
-      setUploadingImage(true);
-      setError(null);
-
-      // Convert file to base64
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-          const base64Data = result.split(',')[1];
-          resolve(base64Data);
-        };
-        reader.readAsDataURL(imageFile);
-      });
-
-      // Upload via Netlify function
-      const response = await fetch('/.netlify/functions/upload-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData: base64,
-          fileName: imageFile.name,
-          contentType: imageFile.type
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to upload image');
-      }
-
-      const result = await response.json();
-      
-      // Update the image block with the URL
-      setImageBlock(prev => ({
-        ...prev,
-        imageUrl: result.imageUrl
-      }));
-
-      setSuccess('Image uploaded successfully!');
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err: any) {
-      console.error('Error uploading image:', err);
-      setError(`Failed to upload image: ${err.message}`);
-    } finally {
-      setUploadingImage(false);
-    }
+  const handleImageAltTextChange = (altText: string) => {
+    setImageBlock(prev => ({ ...prev, altText }));
   };
 
   const handleRemoveImage = () => {
-    setImageFile(null);
-    setImagePreview(null);
     setImageBlock({ imageUrl: '', altText: '' });
+  };
+
+  const isValidImageUrl = (url: string) => {
+    try {
+      new URL(url);
+      return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+    } catch {
+      return false;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,8 +120,6 @@ const SlackMessengerPage: React.FC = () => {
       setTextBlocks([{ text: '', size: 'normal' }]);
       setIncludeImage(false);
       setImageBlock({ imageUrl: '', altText: '' });
-      setImageFile(null);
-      setImagePreview(null);
       if (messageType === 'channel') {
         setChannel('');
       } else {
@@ -403,63 +328,26 @@ const SlackMessengerPage: React.FC = () => {
                 {includeImage && (
                   <div className="space-y-4 pl-6 border-l-2 border-blue-100">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Upload Image
+                      <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 mb-2">
+                        Image URL
                       </label>
-                      <div className="flex items-center space-x-4">
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <LinkIcon size={18} className="text-gray-400" />
+                        </div>
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageFileChange}
-                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          type="url"
+                          id="imageUrl"
+                          value={imageBlock.imageUrl}
+                          onChange={(e) => handleImageUrlChange(e.target.value)}
+                          className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="https://example.com/image.jpg"
                         />
-                        {imageFile && !imageBlock.imageUrl && (
-                          <button
-                            type="button"
-                            onClick={handleImageUpload}
-                            disabled={uploadingImage}
-                            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                          >
-                            {uploadingImage ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Upload size={16} className="mr-2" />
-                                Upload
-                              </>
-                            )}
-                          </button>
-                        )}
                       </div>
                       <p className="mt-2 text-sm text-gray-500">
-                        Supported formats: JPG, PNG, GIF. Max size: 5MB
+                        Enter a direct URL to an image (JPG, PNG, GIF, WebP)
                       </p>
                     </div>
-
-                    {imagePreview && (
-                      <div className="relative">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Image Preview
-                        </label>
-                        <div className="relative inline-block">
-                          <img
-                            src={imagePreview}
-                            alt="Preview"
-                            className="max-w-xs max-h-48 rounded-lg border border-gray-300"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleRemoveImage}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
 
                     <div>
                       <label htmlFor="imageAltText" className="block text-sm font-medium text-gray-700 mb-2">
@@ -469,17 +357,53 @@ const SlackMessengerPage: React.FC = () => {
                         type="text"
                         id="imageAltText"
                         value={imageBlock.altText}
-                        onChange={(e) => setImageBlock(prev => ({ ...prev, altText: e.target.value }))}
+                        onChange={(e) => handleImageAltTextChange(e.target.value)}
                         className="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="Describe the image..."
                       />
                     </div>
 
                     {imageBlock.imageUrl && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Image Preview
+                        </label>
+                        {isValidImageUrl(imageBlock.imageUrl) ? (
+                          <div className="relative inline-block">
+                            <img
+                              src={imageBlock.imageUrl}
+                              alt={imageBlock.altText || "Preview"}
+                              className="max-w-xs max-h-48 rounded-lg border border-gray-300"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleRemoveImage}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div className="flex items-center">
+                              <Image size={16} className="text-yellow-600 mr-2" />
+                              <span className="text-sm text-yellow-700">
+                                Invalid image URL. Please enter a direct link to an image file.
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {imageBlock.imageUrl && isValidImageUrl(imageBlock.imageUrl) && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div className="flex items-center">
                           <Image size={16} className="text-green-600 mr-2" />
-                          <span className="text-sm text-green-700">Image uploaded and ready to send</span>
+                          <span className="text-sm text-green-700">Image ready to send</span>
                         </div>
                       </div>
                     )}
@@ -554,7 +478,7 @@ const SlackMessengerPage: React.FC = () => {
               <div className="flex justify-end">
                 <button
                   type="submit"
-                  disabled={loading || (includeImage && !imageBlock.imageUrl)}
+                  disabled={loading || (includeImage && imageBlock.imageUrl && !isValidImageUrl(imageBlock.imageUrl))}
                   className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {loading ? (
