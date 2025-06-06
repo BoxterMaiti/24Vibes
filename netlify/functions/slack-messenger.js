@@ -41,12 +41,13 @@ async function findSlackUserByEmail(email) {
 }
 
 /**
- * Format message blocks based on text blocks and button options
+ * Format message blocks based on text blocks, button options, and image
  * @param {Array} textBlocks - Array of text blocks with size
  * @param {object} button - Button configuration
+ * @param {object} image - Image configuration
  * @returns {Array} - Formatted message blocks
  */
-function formatMessageBlocks(textBlocks, button) {
+function formatMessageBlocks(textBlocks, button, image) {
   const blocks = [];
 
   // Add each text block with appropriate formatting
@@ -77,6 +78,15 @@ function formatMessageBlocks(textBlocks, button) {
       });
     }
   });
+
+  // Add image block if provided
+  if (image && image.imageUrl) {
+    blocks.push({
+      type: "image",
+      image_url: image.imageUrl,
+      alt_text: image.altText || "Uploaded image"
+    });
+  }
 
   // Add button section at the end if configured
   if (button && button.text && button.url) {
@@ -168,7 +178,7 @@ exports.handler = async function(event, context) {
     }
 
     // Format message blocks
-    const blocks = formatMessageBlocks(payload.blocks, payload.button);
+    const blocks = formatMessageBlocks(payload.blocks, payload.button, payload.image);
 
     // Get fallback text for clients that don't support blocks
     const fallbackText = payload.blocks.map(block => block.text).join('\n\n');
