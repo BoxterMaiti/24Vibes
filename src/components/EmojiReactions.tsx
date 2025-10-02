@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, X } from 'lucide-react';
+import { PlusCircle, X, Plus } from 'lucide-react';
+import { EmojiPicker } from 'frimousse';
 import { EMOJI_REACTIONS, Reaction } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useEmojiMenu } from '../contexts/EmojiMenuContext';
@@ -22,16 +23,23 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
   type = 'received'
 }) => {
   const [hoveredEmoji, setHoveredEmoji] = useState<string | null>(null);
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
   const { currentUser } = useAuth();
   const { openVibeId, setOpenVibeId } = useEmojiMenu();
   const menuRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   const isOpen = openVibeId === vibeId;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedInMenu = menuRef.current && menuRef.current.contains(target);
+      const clickedInPicker = pickerRef.current && pickerRef.current.contains(target);
+      
+      if (!clickedInMenu && !clickedInPicker) {
         setOpenVibeId(null);
+        setShowCustomPicker(false);
       }
     }
 
@@ -39,7 +47,7 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [setOpenVibeId]);
+  }, [setOpenVibeId, showCustomPicker]);
 
   const handleReactionClick = async (emoji: string) => {
     if (!currentUser || type === 'sent') return;
@@ -59,9 +67,25 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
         await addReaction(vibeId, currentUser.uid, emoji);
       }
       onReactionChange();
-      setOpenVibeId(null); // Close menu only after selecting an emoji
+      setOpenVibeId(null);
+      setShowCustomPicker(false);
     } catch (error) {
       console.error('Error handling reaction:', error);
+    }
+  };
+
+  const handleCustomEmojiSelect = async (emoji: any) => {
+    console.log('Custom emoji selected via onEmojiSelect!', emoji);
+    console.log('Full emoji object:', JSON.stringify(emoji, null, 2));
+    
+    const emojiChar = emoji.native || emoji.emoji || emoji.char || emoji;
+    console.log('Using emoji char:', emojiChar);
+    
+    if (emojiChar && typeof emojiChar === 'string') {
+      console.log('Calling handleReactionClick with:', emojiChar);
+      await handleReactionClick(emojiChar);
+    } else {
+      console.error('No valid emoji character found!', emoji);
     }
   };
 
@@ -76,18 +100,19 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
   const userHasReacted = currentUser && reactions.some(r => r.userId === currentUser.uid);
   const hasAnyReactions = reactions.length > 0;
   const canShowReactButton = (!openVibeId || openVibeId === vibeId) && type === 'received';
-  const shouldShowReactButton = (showReactButton || isOpen) && canShowReactButton;
+  const shouldShowReactButton = (showReactButton || isOpen || showCustomPicker) && canShowReactButton;
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && !showCustomPicker && (
           <motion.div
+            ref={menuRef}
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
-            className="absolute right-0 bottom-full mb-2 py-1 px-2 bg-white rounded-full shadow-xl border border-gray-100 flex space-x-1 z-10"
+            className="absolute right-0 bottom-full mb-2 py-1 px-2 bg-white rounded-full shadow-xl border border-gray-100 flex items-center space-x-1 z-10"
             style={{
               boxShadow: '0 -4px 24px -4px rgba(0, 0, 0, 0.1), 0 -2px 8px -2px rgba(0, 0, 0, 0.05)'
             }}
@@ -113,12 +138,93 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
                 </div>
               </motion.button>
             ))}
+            <div className="w-px h-8 bg-gray-200 mx-1" />
+            <motion.button
+              onClick={() => setShowCustomPicker(true)}
+              className="w-12 h-12 flex items-center justify-center hover:bg-gray-50 rounded-full transition-colors duration-200"
+              whileHover={{ 
+                scale: 1.1,
+                transition: { 
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 17
+                }
+              }}
+              whileTap={{ scale: 0.95 }}
+              title="More emojis"
+            >
+              <Plus className="w-5 h-5 text-gray-600" />
+            </motion.button>
+          </motion.div>
+        )}
+        
+        {showCustomPicker && (
+          <motion.div
+            ref={pickerRef}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 300,
+              damping: 25,
+              duration: 0.3
+            }}
+            className="absolute right-0 bottom-full mb-2 shadow-2xl border border-gray-200 z-20 overflow-hidden rounded-xl bg-white"
+            style={{
+              boxShadow: '0 -8px 32px -8px rgba(0, 0, 0, 0.15), 0 -4px 16px -4px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <EmojiPicker.Root 
+              className="isolate flex h-[368px] w-fit flex-col bg-white"
+              onEmojiSelect={handleCustomEmojiSelect}
+            >
+              <EmojiPicker.Search 
+                className="z-10 mx-2 mt-2 appearance-none rounded-md bg-neutral-100 px-2.5 py-2 text-sm" 
+                placeholder="Search emojis..."
+              />
+              <EmojiPicker.Viewport className="relative flex-1 outline-hidden">
+                <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-neutral-400 text-sm">
+                  Loading…
+                </EmojiPicker.Loading>
+                <EmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-neutral-400 text-sm">
+                  No emoji found.
+                </EmojiPicker.Empty>
+                <EmojiPicker.List
+                  className="select-none pb-1.5"
+                  components={{
+                    CategoryHeader: ({ category, ...props }) => (
+                      <div
+                        className="bg-white px-3 pt-3 pb-1.5 font-medium text-neutral-600 text-xs"
+                        {...props}
+                      >
+                        {category.label}
+                      </div>
+                    ),
+                    Row: ({ children, ...props }) => (
+                      <div className="scroll-my-1.5 px-1.5" {...props}>
+                        {children}
+                      </div>
+                    ),
+                    Emoji: ({ emoji, ...props }) => (
+                      <button
+                        className="flex size-8 items-center justify-center rounded-md text-lg data-[active]:bg-neutral-100"
+                        {...props}
+                      >
+                        {emoji.native || emoji.emoji}
+                      </button>
+                    ),
+                  }}
+                />
+              </EmojiPicker.Viewport>
+            </EmojiPicker.Root>
           </motion.div>
         )}
       </AnimatePresence>
 
       <div className="flex items-center space-x-2">
-        {EMOJI_REACTIONS.map(({ emoji }) => {
+        {/* Get all unique emojis from reactions */}
+        {Array.from(new Set(reactions.map(r => r.emoji))).map((emoji) => {
           const count = getReactionCount(emoji);
           if (count > 0) {
             const isUserReaction = hasUserReacted(emoji);
@@ -160,7 +266,7 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
         })}
         
         <AnimatePresence>
-          {!userHasReacted && shouldShowReactButton && (
+          {!userHasReacted && shouldShowReactButton && !showCustomPicker && (
             <motion.button
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -179,6 +285,18 @@ const EmojiReactions: React.FC<EmojiReactionsProps> = ({
               <PlusCircle size={16} />
               <span>React</span>
             </motion.button>
+          )}
+          
+          {!userHasReacted && shouldShowReactButton && showCustomPicker && (
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white shadow-lg text-sm font-medium text-gray-700 ring-1 ring-gray-100 ${
+              hasAnyReactions ? 'ml-2' : ''
+            }`}
+            style={{
+              boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.05)'
+            }}>
+              <PlusCircle size={16} />
+              <span>React</span>
+            </div>
           )}
         </AnimatePresence>
       </div>

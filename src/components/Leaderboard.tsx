@@ -74,6 +74,20 @@ const Leaderboard: React.FC = () => {
 
         // Count vibes for each user within the time range and location filter
         const vibeCounts = new Map<string, number>();
+        const allTimeVibeCounts = new Map<string, number>();
+        
+        // First, count all-time vibes for level calculation
+        vibes.forEach(vibe => {
+          const key = activeTab === 'makers' ? vibe.sender : vibe.recipient;
+          const userData = userMap.get(key);
+          
+          // Apply location filter for all-time counts too
+          if (selectedLocation === 'all' || userData?.location === selectedLocation) {
+            allTimeVibeCounts.set(key, (allTimeVibeCounts.get(key) || 0) + 1);
+          }
+        });
+        
+        // Then count vibes for the selected time range (for display count only)
         vibes.forEach(vibe => {
           const vibeDate = new Date(vibe.createdAt);
           if (vibeDate >= timeRange.start && vibeDate <= timeRange.end) {
@@ -94,12 +108,15 @@ const Leaderboard: React.FC = () => {
               name: email.split('@')[0],
               location: 'Unknown'
             };
+            
+            // Use all-time count for level calculation
+            const allTimeCount = allTimeVibeCounts.get(email) || 0;
             const level = VIBER_LEVELS.reduce((current, next) => 
-              count >= next.requirement ? next : current
+              allTimeCount >= next.requirement ? next : current
             );
             const nextLevel = VIBER_LEVELS[VIBER_LEVELS.indexOf(level) + 1];
             const progress = nextLevel ? 
-              ((count - level.requirement) / (nextLevel.requirement - level.requirement)) * 100 : 
+              ((allTimeCount - level.requirement) / (nextLevel.requirement - level.requirement)) * 100 : 
               100;
 
             return {
@@ -109,7 +126,7 @@ const Leaderboard: React.FC = () => {
               avatar: userData.avatar,
               department: userData.department,
               location: userData.location,
-              count,
+              count, // This is the filtered count for display
               level,
               progress: Math.min(progress, 100)
             };
@@ -120,10 +137,35 @@ const Leaderboard: React.FC = () => {
 
         // Set user rank
         if (currentUser?.email) {
-          const userEntry = entries.find(entry => entry.email === currentUser.email);
-          if (userEntry) {
-            setUserRank(userEntry);
-          }
+          const userData = userMap.get(currentUser.email) || { 
+            name: currentUser.email.split('@')[0],
+            location: 'Unknown'
+          };
+          
+          // Get filtered count for current user
+          const userFilteredCount = vibeCounts.get(currentUser.email) || 0;
+          // Get all-time count for level calculation
+          const userAllTimeCount = allTimeVibeCounts.get(currentUser.email) || 0;
+          
+          const userLevel = VIBER_LEVELS.reduce((current, next) => 
+            userAllTimeCount >= next.requirement ? next : current
+          );
+          const nextLevel = VIBER_LEVELS[VIBER_LEVELS.indexOf(userLevel) + 1];
+          const userProgress = nextLevel ? 
+            ((userAllTimeCount - userLevel.requirement) / (nextLevel.requirement - userLevel.requirement)) * 100 : 
+            100;
+
+          setUserRank({
+            userId: currentUser.email,
+            email: currentUser.email,
+            name: userData.name,
+            avatar: userData.avatar,
+            department: userData.department,
+            location: userData.location,
+            count: userFilteredCount, // Use filtered count for display
+            level: userLevel,
+            progress: Math.min(userProgress, 100)
+          });
         }
       } catch (err) {
         console.error('Error loading leaderboard:', err);
